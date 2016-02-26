@@ -1,4 +1,4 @@
-PROGS	= 
+PROGS	= mpdstate
 default	: $(PROGS)
 
 VERSION:= $(shell git describe --always --tags --dirty)
