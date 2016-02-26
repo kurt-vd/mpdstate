@@ -1,0 +1,8 @@
+# temp files
+*.o
+
+# output
+
+# environment
+/ctags
+/config.mk
