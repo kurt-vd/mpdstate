@@ -61,6 +61,7 @@ static const char help_msg[] =
 	" -?, --help		Show this help message\n"
 	" -h, --host=HOST	Connect to MPD on HOST\n"
 	" -p, --port=PORT	MPD on PORT\n"
+	" -1			Output all properties and exit\n"
 	;
 
 static struct option long_opts[] = {
@@ -71,7 +72,7 @@ static struct option long_opts[] = {
 	{ "port", required_argument, NULL, 'p', },
 	{ },
 };
-static const char optstring[] = "+?Vh:p:";
+static const char optstring[] = "+?Vh:p:1";
 
 static int connect_uri(const char *host, int port)
 {
@@ -180,7 +181,7 @@ static int outputstate, outputsknown;
 
 int main(int argc, char *argv[])
 {
-	int opt, sock, ret, changed, j;
+	int opt, sock, ret, changed, j, once = 0;
 	const char *host = "localhost";
 	int port = 6600;
 	char *tok, *saved, *value;
@@ -202,6 +203,9 @@ int main(int argc, char *argv[])
 		break;
 	case 'p':
 		port = strtoul(optarg, NULL, 0);
+		break;
+	case '1':
+		once = 1;
 		break;
 	}
 
@@ -265,6 +269,8 @@ int main(int argc, char *argv[])
 			}
 		}
 		fflush(stdout);
+		if (once)
+			break;
 
 		/* wait for events */
 		ret = send_recv(sock, "idle", buf, sizeof(buf)-1);
