@@ -76,12 +76,12 @@ static struct option long_opts[] = {
 };
 static const char optstring[] = "+?Vh:p:1";
 
-static int connect_uri(const char *host, int port)
+static int connect_uri(const char *host, int port, int preferred_type)
 {
 	int sock;
 	struct addrinfo hints = {
 		.ai_family = AF_UNSPEC,
-		/*.ai_socktype = SOCK_DGRAM, */
+		.ai_socktype = preferred_type,
 		.ai_protocol = 0,
 		.ai_flags = 0,
 	}, *paddr = NULL, *ai;
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 		break;
 	}
 
-	sock = connect_uri(host, port);
+	sock = connect_uri(host, port, SOCK_STREAM);
 	if (sock < 0)
 		mylog(1, 0, "could not connect to %s:%u", host, port);
 
