@@ -40,13 +40,15 @@ static void mylog(int exitcode, int errnum, const char *fmt, ...)
 	va_start(va, fmt);
 	ret += vsprintf(str+ret, fmt, va);
 	va_end(va);
-	if (errnum) {
-		if (str[ret-1] == '\n')
-			--ret;
-
+	/* strip trailing newline */
+	if (str[ret-1] == '\n')
+		str[--ret] = 0;
+	/* print error string */
+	if (errnum)
 		ret += sprintf(str+ret, ": %s\n", strerror(errnum));
-	}
+	/* emit output */
 	fputs(str, stderr);
+	fputc('\n', stderr);
 	fflush(stderr);
 	if (exitcode)
 		exit(exitcode);
