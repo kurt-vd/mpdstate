@@ -56,7 +56,7 @@ static void mylog(int exitcode, int errnum, const char *fmt, ...)
 
 static const char help_msg[] =
 	NAME ": watch MPD state\n"
-	"usage: " NAME " [OPTIONS ...]\n"
+	"usage: " NAME " [OPTIONS ...] [CMD ARGS]\n"
 	"\n"
 	"Options\n"
 	" -V, --version		Show version\n"
@@ -64,6 +64,10 @@ static const char help_msg[] =
 	" -h, --host=HOST	Connect to MPD on HOST\n"
 	" -p, --port=PORT	MPD on PORT\n"
 	" -1			Output all properties and exit\n"
+	"\n"
+	"Arguments\n"
+	" When present, "NAME" executes CMD ARGS that receives\n"
+	" the output of "NAME". Nothing is output on stdout\n"
 	;
 
 static struct option long_opts[] = {
@@ -219,6 +223,28 @@ int main(int argc, char *argv[])
 	ret = recv(sock, buf, sizeof(buf)-1, 0);
 	if (ret < 0)
 		mylog(1, errno, "recv");
+
+	if (argv[optind]) {
+		/* fork child process */
+		int pp[2];
+
+		if (pipe(pp) < 0)
+			mylog(1, errno, "pipe() failed\n");
+		ret = fork();
+		if (ret < 0)
+			mylog(1, errno, "fork() failed\n");
+		else if (!ret) {
+			dup2(pp[0], STDIN_FILENO);
+			close(pp[0]);
+			close(pp[1]);
+			close(sock);
+			execvp(argv[optind], argv+optind);
+			mylog(1, errno, "execvp %s ...", argv[optind]);
+		}
+		dup2(pp[1], STDOUT_FILENO);
+		close(pp[0]);
+		close(pp[1]);
+	}
 
 	/* ask everything */
 	changed = ~0;
