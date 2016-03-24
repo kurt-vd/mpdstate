@@ -57,13 +57,14 @@ static void mylog(int exitcode, int errnum, const char *fmt, ...)
 static const char help_msg[] =
 	NAME ": watch MPD state\n"
 	"usage: " NAME " [OPTIONS ...] [CMD ARGS]\n"
+	"	" NAME " [OPTIONS ...] -1 [PROPERTYNAME]\n"
 	"\n"
 	"Options\n"
 	" -V, --version		Show version\n"
 	" -?, --help		Show this help message\n"
 	" -h, --host=HOST	Connect to MPD on HOST\n"
 	" -p, --port=PORT	MPD on PORT\n"
-	" -1			Output all properties and exit\n"
+	" -1			Output all properties, or PROPERTYNAME, and exit\n"
 	"\n"
 	"Arguments\n"
 	" When present, "NAME" executes CMD ARGS that receives\n"
@@ -191,6 +192,7 @@ int main(int argc, char *argv[])
 	const char *host = "localhost";
 	int port = 6600;
 	char *tok, *saved, *value;
+	char *propname = NULL;
 
 	/* parse program options */
 	while ((opt = getopt_long(argc, argv, optstring, long_opts, NULL)) != -1)
@@ -224,7 +226,7 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		mylog(1, errno, "recv");
 
-	if (argv[optind]) {
+	if (!once && argv[optind]) {
 		/* fork child process */
 		int pp[2];
 
@@ -244,6 +246,9 @@ int main(int argc, char *argv[])
 		dup2(pp[1], STDOUT_FILENO);
 		close(pp[0]);
 		close(pp[1]);
+	} else if (once && argv[optind]) {
+		/* fetch only 1 property */
+		propname = argv[optind++];
 	}
 
 	/* ask everything */
@@ -264,7 +269,11 @@ int main(int argc, char *argv[])
 				if (strcmp(value, *pcache)) {
 					free(*pcache);
 					*pcache = strdup(value);
-					printf("%s\t%s\n", tok, value);
+					if (propname && !strcmp(propname, tok)) {
+						printf("%s\n", value);
+						exit(0);
+					} else if (!propname)
+						printf("%s\t%s\n", tok, value);
 				}
 			}
 		}
@@ -287,11 +296,14 @@ int main(int argc, char *argv[])
 					int mask = 1 << id;
 					int state = !!strtoul(value, NULL, 0) << id;
 
-					if ((~outputsknown | (outputstate ^ state)) & mask) {
+					if (propname && !strncmp("output", propname, 6) && (strtoul(propname+6, NULL, 0) == id)) {
+						printf("%s\n", value);
+						exit(0);
+					} else if (!propname && (~outputsknown | (outputstate ^ state)) & mask) {
 						/* new output or different state */
 						outputsknown |= mask;
 						outputstate = (outputstate & ~mask) | state;
-						printf("output%i:\"%s\" %s\n", id, name, value);
+						printf("output%i:\"%s\"\t%s\n", id, name, value);
 					}
 				}
 			}
